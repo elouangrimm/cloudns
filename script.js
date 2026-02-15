@@ -21,7 +21,8 @@ function isConfigValid(config) {
 
 let CONFIG = loadConfig();
 
-const API_BASE = "https://api.cloudflare.com/client/v4";
+// Use Vercel serverless function as proxy to avoid CORS
+const API_BASE = "/api/cloudflare";
 
 const searchInput = document.getElementById("search-input");
 const typeFilter = document.getElementById("type-filter");
@@ -72,7 +73,8 @@ const PRIORITY_TYPES = ["MX", "SRV", "URI"];
 
 function headers() {
     return {
-        "Authorization": `Bearer ${CONFIG.apiKey}`,
+        "X-Cloudflare-API-Key": CONFIG.apiKey,
+        "X-Zone-ID": CONFIG.zoneId,
         "Content-Type": "application/json",
     };
 }
@@ -82,7 +84,9 @@ async function apiRequest(method, path, body) {
     if (body) {
         options.body = JSON.stringify(body);
     }
-    const response = await fetch(`${API_BASE}${path}`, options);
+    // Encode the Cloudflare API path as a query parameter
+    const proxyUrl = `${API_BASE}?path=${encodeURIComponent(path)}`;
+    const response = await fetch(proxyUrl, options);
     const data = await response.json();
     if (!data.success) {
         const msg = data.errors?.map(e => e.message).join(", ") || "Unknown API error";
